@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>FinWise | Personal Finance Dashboard (₹ Rupees)</title>
+    <!-- Chart.js CDN for charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- Font Awesome 6 (free icons) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+            transition: background 0.2s ease, color 0.2s ease, border-color 0.2s;
+        }
+
+        /* Light mode (default) */
+        :root {
+            --bg-page: #f3f6fc;
+            --card-bg: #ffffff;
+            --text-primary: #1e293b;
+            --text-secondary: #475569;
+            --border: #e2e8f0;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --danger: #ef4444;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --sidebar-bg: #ffffff;
+            --header-bg: #ffffff;
+            --shadow: 0 8px 20px rgba(0,0,0,0.03), 0 2px 6px rgba(0,0,0,0.05);
+        }
+
+        body.dark {
+            --bg-page: #0f172a;
+            --card-bg: #1e293b;
+            --text-primary: #f1f5f9;
+            --text-secondary: #cbd5e1;
+            --border: #334155;
+            --accent: #3b82f6;
+            --accent-hover: #60a5fa;
+            --sidebar-bg: #111827;
+            --header-bg: #1e293b;
+            --shadow: 0 8px 20px rgba(0,0,0,0.3);
+        }
+
+        body {
+            background: var(--bg-page);
+            color: var(--text-primary);
+        }
+
+        /* Layout */
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--border);
+            padding: 2rem 1rem;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 10;
+        }
+
+        .logo {
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin-bottom: 2.5rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--accent);
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            margin: 6px 0;
+            border-radius: 14px;
+            cursor: pointer;
+            font-weight: 500;
+            color: var(--text-secondary);
+            transition: 0.2s;
+        }
+
+        .nav-item i {
+            width: 24px;
+            font-size: 1.2rem;
+        }
+
+        .nav-item.active, .nav-item:hover {
+            background: var(--accent);
+            color: white;
+        }
+
+        /* Main content */
+        .main-content {
+            flex: 1;
+            margin-left: 260px;
+            padding: 1.8rem 2rem;
+        }
+
+        /* Header top bar */
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .dark-toggle {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            padding: 8px 16px;
+            border-radius: 40px;
+            cursor: pointer;
+            font-weight: 500;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        /* Cards grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            padding: 1.2rem;
+            border-radius: 24px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+        }
+
+        /* Forms & Tables */
+        .form-card, .section-card {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+        }
+
+        input, select, button {
+            background: var(--bg-page);
+            border: 1px solid var(--border);
+            padding: 10px 14px;
+            border-radius: 16px;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+        }
+
+        button {
+            background: var(--accent);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        button:hover {
+            background: var(--accent-hover);
+        }
+
+        .transaction-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .transaction-table th, .transaction-table td {
+            padding: 12px 8px;
+            border-bottom: 1px solid var(--border);
+            text-align: left;
+        }
+
+        .badge {
+            padding: 4px 10px;
+            border-radius: 30px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-expense { background: #fee2e2; color: #b91c1c; }
+        .badge-income { background: #dcfce7; color: #166534; }
+        body.dark .badge-expense { background: #7f1a1a; color: #fecaca; }
+        body.dark .badge-income { background: #14532d; color: #bbf7d0; }
+
+        .progress-bar {
+            background: var(--border);
+            border-radius: 20px;
+            height: 8px;
+            overflow: hidden;
+            margin: 8px 0;
+        }
+        .progress-fill {
+            background: var(--accent);
+            width: 0%;
+            height: 100%;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar { width: 70px; padding: 1rem 0.5rem; }
+            .sidebar .logo span, .sidebar .nav-item span { display: none; }
+            .main-content { margin-left: 70px; padding: 1rem; }
+            .nav-item i { margin: 0 auto; }
+            .logo i { margin: 0 auto; }
+        }
+
+        .auth-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(5px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .auth-box {
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 32px;
+            width: 340px;
+            text-align: center;
+        }
+        .hidden {
+            display: none;
+        }
+        .chart-container {
+            max-height: 280px;
+        }
+        .flex-between {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .rupee-symbol {
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+<div id="authWrapper"></div>
+<div id="appDashboard" class="app-container hidden">
+    <!-- Sidebar Navigation -->
+    <div class="sidebar">
+        <div class="logo">
+            <i class="fas fa-chart-line"></i><span>FinWise</span>
+        </div>
+        <div class="nav-item active" data-tab="dashboard"><i class="fas fa-tachometer-alt"></i><span> Dashboard</span></div>
+        <div class="nav-item" data-tab="expenses"><i class="fas fa-shopping-cart"></i><span> Expenses</span></div>
+        <div class="nav-item" data-tab="income"><i class="fas fa-wallet"></i><span> Income</span></div>
+        <div class="nav-item" data-tab="budgets"><i class="fas fa-chart-simple"></i><span> Budgets</span></div>
+        <div class="nav-item" data-tab="goals"><i class="fas fa-flag-checkered"></i><span> Savings Goals</span></div>
+        <div class="nav-item" data-tab="history"><i class="fas fa-clock"></i><span> History</span></div>
+        <div class="nav-item" id="logoutBtn"><i class="fas fa-sign-out-alt"></i><span> Logout</span></div>
+    </div>
+
+    <div class="main-content">
+        <div class="top-bar">
+            <h2 id="pageTitle">Dashboard</h2>
+            <div class="dark-toggle" id="darkModeToggle"><i class="fas fa-moon"></i> <span>Dark / Light</span></div>
+        </div>
+
+        <!-- DASHBOARD TAB -->
+        <div id="dashboardTab" class="tab-content">
+            <div class="stats-grid" id="statsCards"></div>
+            <div class="form-card">
+                <h3>📊 Spending by Category (Last 30 days)</h3>
+                <canvas id="expenseChart" width="400" height="200" style="max-height: 280px;"></canvas>
+            </div>
+            <div class="form-card">
+                <h3>💰 Savings Goals Progress</h3>
+                <div id="goalsPreview"></div>
+            </div>
+        </div>
+
+        <!-- EXPENSE TRACKING -->
+        <div id="expensesTab" class="tab-content hidden">
+            <div class="form-card">
+                <h3>➕ Add Expense (₹)</h3>
+                <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+                    <input type="text" id="expCategory" placeholder="Category (e.g. Food, Rent)" style="flex:1">
+                    <input type="number" id="expAmount" placeholder="Amount in ₹" style="flex:1">
+                    <input type="date" id="expDate" style="flex:1">
+                    <input type="text" id="expNote" placeholder="Note (optional)" style="flex:1">
+                    <button id="addExpenseBtn">Add Expense</button>
+                </div>
+            </div>
+            <div class="section-card"><h3>📋 Recent Expenses</h3><div id="expenseList"></div></div>
+        </div>
+
+        <!-- INCOME TRACKING -->
+        <div id="incomeTab" class="tab-content hidden">
+            <div class="form-card">
+                <h3>➕ Add Income (₹)</h3>
+                <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+                    <input type="text" id="incSource" placeholder="Source (Salary, Freelance)" style="flex:1">
+                    <input type="number" id="incAmount" placeholder="Amount in ₹" style="flex:1">
+                    <input type="date" id="incDate" style="flex:1">
+                    <button id="addIncomeBtn">Add Income</button>
+                </div>
+            </div>
+            <div class="section-card"><h3>💰 Income History</h3><div id="incomeList"></div></div>
+        </div>
+
+        <!-- BUDGET PLANNER -->
+        <div id="budgetsTab" class="tab-content hidden">
+            <div class="form-card">
+                <h3>📌 Set/Update Budget Limit per Category (₹ per month)</h3>
+                <div style="display: flex; gap: 12px; flex-wrap:wrap">
+                    <input type="text" id="budgetCategory" placeholder="Category (e.g. Food)">
+                    <input type="number" id="budgetLimit" placeholder="Monthly Limit (₹)">
+                    <button id="setBudgetBtn">Set Budget</button>
+                </div>
+                <div id="budgetListPreview" style="margin-top: 20px;"></div>
+            </div>
+        </div>
+
+        <!-- SAVINGS GOALS -->
+        <div id="goalsTab" class="tab-content hidden">
+            <div class="form-card">
+                <h3>🎯 Create Savings Goal (₹)</h3>
+                <div style="display: flex; flex-wrap: wrap; gap:12px;">
+                    <input type="text" id="goalName" placeholder="Goal name (e.g. Vacation)">
+                    <input type="number" id="goalTarget" placeholder="Target amount (₹)">
+                    <input type="number" id="goalCurrent" placeholder="Current saved (₹)">
+                    <input type="date" id="goalDeadline">
+                    <button id="addGoalBtn">Create Goal</button>
+                </div>
+            </div>
+            <div class="section-card"><h3>📈 Active Savings Goals</h3><div id="goalsList"></div></div>
+        </div>
+
+        <!-- TRANSACTION HISTORY -->
+        <div id="historyTab" class="tab-content hidden">
+            <div class="section-card">
+                <h3>📜 All Transactions (Expenses + Income)</h3>
+                <input type="text" id="searchHistory" placeholder="🔍 Search by category, source or note..." style="width:100%; margin-bottom:16px;">
+                <div id="historyTable"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ---------- STORAGE KEYS (multi-user support via logged user email) ----------
+    let currentUser = null; // stores email
+
+    function getUserKey() {
+        if(!currentUser) return null;
+        return `finwise_${currentUser.replace(/[^a-z0-9]/gi, '_')}`;
+    }
+
+    // Default data structures (seed values in Rupees - Indian context)
+    let appData = {
+        expenses: [],     // {id, category, amount, date, note}
+        incomes: [],      // {id, source, amount, date}
+        budgets: [],      // {category, limit_amount}
+        savingsGoals: []  // {id, target_amount, current_amount, deadline, name}
+    };
+
+    function loadData() {
+        const key = getUserKey();
+        if(!key) return;
+        const raw = localStorage.getItem(key);
+        if(raw) {
+            appData = JSON.parse(raw);
+        } else {
+            // seed some demo data for new user (in Rupees)
+            const today = new Date().toISOString().slice(0,10);
+            appData = {
+                expenses: [
+                    {id: Date.now()+1, category:"Food", amount:1250.50, date:today, note:"Groceries & vegetables"},
+                    {id: Date.now()+2, category:"Transport", amount:450.00, date:today, note:"Metro & Auto"}
+                ],
+                incomes: [
+                    {id: Date.now()+3, source:"Salary", amount:45000, date:today}
+                ],
+                budgets: [{category:"Food", limit_amount:8000},{category:"Transport", limit_amount:3000}],
+                savingsGoals: [
+                    {id: Date.now()+4, name:"Emergency Fund", target_amount:200000, current_amount:35000, deadline:"2025-12-31"}
+                ]
+            };
+            saveData();
+        }
+        refreshAllUI();
+    }
+
+    function saveData() {
+        const key = getUserKey();
+        if(key) localStorage.setItem(key, JSON.stringify(appData));
+    }
+
+    // Helper functions
+    function addExpense(category, amount, date, note) {
+        if(!category || amount<=0) return false;
+        appData.expenses.push({ id: Date.now(), category, amount: parseFloat(amount), date, note: note||"" });
+        saveData();
+        refreshAllUI();
+        return true;
+    }
+
+    function addIncome(source, amount, date) {
+        if(!source || amount<=0) return false;
+        appData.incomes.push({ id: Date.now(), source, amount: parseFloat(amount), date });
+        saveData();
+        refreshAllUI();
+        return true;
+    }
+
+    function setBudget(category, limit) {
+        const existing = appData.budgets.find(b => b.category.toLowerCase() === category.toLowerCase());
+        if(existing) existing.limit_amount = parseFloat(limit);
+        else appData.budgets.push({ category, limit_amount: parseFloat(limit) });
+        saveData();
+        refreshAllUI();
+    }
+
+    function addGoal(name, target, current, deadline) {
+        if(!name || target<=0) return;
+        appData.savingsGoals.push({ id: Date.now(), name, target_amount: parseFloat(target), current_amount: parseFloat(current), deadline });
+        saveData();
+        refreshAllUI();
+    }
+
+    function updateGoalProgress(goalId, newCurrent) {
+        const goal = appData.savingsGoals.find(g=>g.id==goalId);
+        if(goal) { goal.current_amount = parseFloat(newCurrent); saveData(); refreshAllUI(); }
+    }
+
+    function deleteExpense(id) { appData.expenses = appData.expenses.filter(e=>e.id!=id); saveData(); refreshAllUI(); }
+    function deleteIncome(id) { appData.incomes = appData.incomes.filter(i=>i.id!=id); saveData(); refreshAllUI(); }
+    function deleteGoal(id) { appData.savingsGoals = appData.savingsGoals.filter(g=>g.id!=id); saveData(); refreshAllUI(); }
+
+    // Computations
+    function getTotalExpenses() { return appData.expenses.reduce((s,e)=>s+e.amount,0); }
+    function getTotalIncome() { return appData.incomes.reduce((s,i)=>s+i.amount,0); }
+    function getBalance() { return getTotalIncome() - getTotalExpenses(); }
+
+    function getCategorySpending() {
+        const map = new Map();
+        appData.expenses.forEach(exp => { map.set(exp.category, (map.get(exp.category)||0)+exp.amount); });
+        return map;
+    }
+
+    // Helper to format Indian currency
+    function formatIndianRupee(amount) {
+        return "₹ " + amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    // Dashboard: refresh stats, chart, goals preview
+    let chartInstance = null;
+    function refreshDashboard() {
+        document.getElementById("statsCards").innerHTML = `
+            <div class="stat-card"><i class="fas fa-coins"></i><h3>Total Income</h3><p style="font-size:28px;">${formatIndianRupee(getTotalIncome())}</p></div>
+            <div class="stat-card"><i class="fas fa-receipt"></i><h3>Total Expenses</h3><p style="font-size:28px;">${formatIndianRupee(getTotalExpenses())}</p></div>
+            <div class="stat-card"><i class="fas fa-scale-balanced"></i><h3>Balance</h3><p style="font-size:28px; color:${getBalance()>=0?'var(--success)':'var(--danger)'};">${formatIndianRupee(getBalance())}</p></div>
+            <div class="stat-card"><i class="fas fa-piggy-bank"></i><h3>Savings Progress</h3><p>${appData.savingsGoals.reduce((acc,g)=>acc+(g.current_amount/g.target_amount)*100,0)/ (appData.savingsGoals.length||1)}% avg</p></div>
+        `;
+        const catMap = getCategorySpending();
+        const labels = Array.from(catMap.keys());
+        const values = Array.from(catMap.values());
+        const ctx = document.getElementById('expenseChart').getContext('2d');
+        if(chartInstance) chartInstance.destroy();
+        chartInstance = new Chart(ctx, { type: 'pie', data: { labels, datasets: [{ data: values, backgroundColor: ['#3b82f6','#f97316','#10b981','#ef4444','#8b5cf6'] }] } });
+        const goalsPreviewDiv = document.getElementById("goalsPreview");
+        if(appData.savingsGoals.length===0) goalsPreviewDiv.innerHTML = "<p>No goals yet. Add in Savings Goals tab.</p>";
+        else {
+            goalsPreviewDiv.innerHTML = appData.savingsGoals.slice(0,3).map(g=>{
+                let percent = (g.current_amount/g.target_amount)*100;
+                return `<div><b>${g.name}</b> - ${formatIndianRupee(g.current_amount)} / ${formatIndianRupee(g.target_amount)}<div class="progress-bar"><div class="progress-fill" style="width:${percent}%"></div></div></div>`;
+            }).join("");
+        }
+    }
+
+    function refreshExpenses() { renderList("expenseList", appData.expenses, "expense", (item)=>`${item.category} - ${formatIndianRupee(item.amount)} (${item.date}) ${item.note?`📝 ${item.note}`:""}`, deleteExpense); }
+    function refreshIncome() { renderList("incomeList", appData.incomes, "income", (item)=>`${item.source} +${formatIndianRupee(item.amount)} (${item.date})`, deleteIncome); }
+    function refreshBudgets() {
+        const spendingMap = getCategorySpending();
+        const html = `<table class="transaction-table"><tr><th>Category</th><th>Budget Limit (₹)</th><th>Spent (₹)</th><th>Remaining (₹)</th></tr>`+
+            appData.budgets.map(b=>{
+                const spent = spendingMap.get(b.category)||0;
+                const remaining = b.limit_amount - spent;
+                return `<tr><td>${b.category}</td><td>${formatIndianRupee(b.limit_amount)}</td><td>${formatIndianRupee(spent)}</td><td style="color:${remaining<0?'red':'green'}">${formatIndianRupee(remaining)}</td></tr>`;
+            }).join("")+`</table>`;
+        document.getElementById("budgetListPreview").innerHTML = html;
+    }
+    function refreshGoals() {
+        const container = document.getElementById("goalsList");
+        if(!container) return;
+        container.innerHTML = appData.savingsGoals.map(g=>{
+            const percent = (g.current_amount/g.target_amount)*100;
+            return `<div class="stat-card" style="margin-bottom:12px;"><div class="flex-between"><strong>🎯 ${g.name}</strong> <button class="deleteGoalBtn" data-id="${g.id}"><i class="fas fa-trash"></i></button></div>
+            <div>Target: ${formatIndianRupee(g.target_amount)} | Saved: ${formatIndianRupee(g.current_amount)} | Deadline: ${g.deadline||'Flexible'}</div>
+            <div class="progress-bar"><div class="progress-fill" style="width:${percent}%"></div></div>
+            <div style="margin-top:8px;"><input type="number" id="updateGoal_${g.id}" placeholder="Add amount (₹)" step="0.01" style="width:120px;"> <button class="updateGoalBtn" data-id="${g.id}">Add Savings</button></div>
+            </div>`;
+        }).join("");
+        document.querySelectorAll('.deleteGoalBtn').forEach(btn=>btn.addEventListener('click',(e)=>{ deleteGoal(parseInt(btn.dataset.id)); }));
+        document.querySelectorAll('.updateGoalBtn').forEach(btn=>btn.addEventListener('click',(e)=>{
+            const id = parseInt(btn.dataset.id);
+            const input = document.getElementById(`updateGoal_${id}`);
+            const addVal = parseFloat(input.value);
+            if(!isNaN(addVal) && addVal>0){
+                const goal = appData.savingsGoals.find(g=>g.id===id);
+                if(goal) goal.current_amount += addVal;
+                saveData(); refreshAllUI();
+            }
+        }));
+    }
+    function refreshHistory() {
+        let allTx = [
+            ...appData.expenses.map(e=>({type:"Expense", cat:e.category, amount:-e.amount, date:e.date, desc:e.note||e.category, id:e.id})),
+            ...appData.incomes.map(i=>({type:"Income", cat:i.source, amount:i.amount, date:i.date, desc:i.source, id:i.id}))
+        ].sort((a,b)=>new Date(b.date) - new Date(a.date));
+        const searchTerm = document.getElementById("searchHistory")?.value.toLowerCase()||"";
+        const filtered = allTx.filter(tx=> (tx.cat+tx.desc).toLowerCase().includes(searchTerm));
+        document.getElementById("historyTable").innerHTML = `<table class="transaction-table"><tr><th>Date</th><th>Type</th><th>Category/Source</th><th>Amount (₹)</th><th>Note</th></tr>`+
+            filtered.map(tx=>`<tr><td>${tx.date}</td><td><span class="badge ${tx.type==='Expense'?'badge-expense':'badge-income'}">${tx.type}</span></td><td>${tx.cat}</td><td style="color:${tx.type==='Expense'?'var(--danger)':'var(--success)'}">${formatIndianRupee(Math.abs(tx.amount))}</td><td>${tx.desc}</td></tr>`).join("")+`</table>`;
+    }
+
+    function renderList(containerId, items, type, displayFn, deleteFn) {
+        const div = document.getElementById(containerId);
+        if(!div) return;
+        if(items.length===0) { div.innerHTML = "<p>No records</p>"; return; }
+        div.innerHTML = `<div style="max-height: 300px; overflow-y:auto;">`+items.map(item=>`<div class="flex-between" style="border-bottom:1px solid var(--border); padding:10px 0;"><span>${displayFn(item)}</span><button class="deleteBtn" data-id="${item.id}" data-type="${type}"><i class="fas fa-trash-alt"></i></button></div>`).join("")+`</div>`;
+        document.querySelectorAll(`#${containerId} .deleteBtn`).forEach(btn=>{
+            btn.addEventListener('click',()=>{
+                const id = parseInt(btn.dataset.id);
+                const t = btn.dataset.type;
+                if(t==="expense") deleteExpense(id);
+                else if(t==="income") deleteIncome(id);
+            });
+        });
+    }
+
+    function refreshAllUI() {
+        refreshDashboard();
+        refreshExpenses();
+        refreshIncome();
+        refreshBudgets();
+        refreshGoals();
+        refreshHistory();
+        updateBudgetWarnings();
+    }
+
+    function updateBudgetWarnings() { /* optional visual */ }
+
+    // Auth system (dummy but persistent)
+    const usersDB = JSON.parse(localStorage.getItem("finwise_users")||'{"demo@finwise.com":"demo123"}');
+    function showAuth() {
+        const wrapper = document.getElementById("authWrapper");
+        wrapper.innerHTML = `<div class="auth-overlay"><div class="auth-box"><i class="fas fa-chart-line fa-3x" style="color:var(--accent);"></i><h2>FinWise Login</h2><input type="email" id="loginEmail" placeholder="Email" style="width:100%; margin:10px 0;"><input type="password" id="loginPass" placeholder="Password" style="width:100%; margin:10px 0;"><button id="doLoginBtn" style="width:100%;">Login / Register</button><p style="margin-top:12px;">Demo: demo@finwise.com / demo123<br/>All values in Indian Rupees (₹)</p></div></div>`;
+        document.getElementById("doLoginBtn").addEventListener("click",()=>{
+            const email = document.getElementById("loginEmail").value.trim();
+            const pass = document.getElementById("loginPass").value.trim();
+            if(email && pass) {
+                if(usersDB[email] && usersDB[email]===pass) { currentUser=email; proceedAfterAuth(); }
+                else if(!usersDB[email]) { usersDB[email]=pass; localStorage.setItem("finwise_users",JSON.stringify(usersDB)); currentUser=email; proceedAfterAuth(); }
+                else alert("Wrong credentials");
+            } else alert("Enter email/password");
+        });
+    }
+    function proceedAfterAuth() {
+        document.getElementById("authWrapper").innerHTML="";
+        document.getElementById("appDashboard").classList.remove("hidden");
+        loadData();
+        setupEventListeners();
+        switchTab('dashboard');
+    }
+    function logout() { currentUser=null; document.getElementById("appDashboard").classList.add("hidden"); showAuth(); }
+    function setupEventListeners() {
+        document.querySelectorAll(".nav-item[data-tab]").forEach(el=>el.addEventListener("click",()=>switchTab(el.dataset.tab)));
+        document.getElementById("logoutBtn").addEventListener("click",logout);
+        document.getElementById("addExpenseBtn").addEventListener("click",()=>{
+            addExpense(document.getElementById("expCategory").value, document.getElementById("expAmount").value, document.getElementById("expDate").value, document.getElementById("expNote").value);
+            document.getElementById("expCategory").value=""; document.getElementById("expAmount").value=""; document.getElementById("expDate").value=""; document.getElementById("expNote").value="";
+        });
+        document.getElementById("addIncomeBtn").addEventListener("click",()=>{
+            addIncome(document.getElementById("incSource").value, document.getElementById("incAmount").value, document.getElementById("incDate").value);
+            document.getElementById("incSource").value=""; document.getElementById("incAmount").value=""; document.getElementById("incDate").value="";
+        });
+        document.getElementById("setBudgetBtn").addEventListener("click",()=>{ setBudget(document.getElementById("budgetCategory").value, document.getElementById("budgetLimit").value); document.getElementById("budgetCategory").value=""; document.getElementById("budgetLimit").value=""; });
+        document.getElementById("addGoalBtn").addEventListener("click",()=>{ addGoal(document.getElementById("goalName").value, document.getElementById("goalTarget").value, document.getElementById("goalCurrent").value, document.getElementById("goalDeadline").value); });
+        document.getElementById("searchHistory")?.addEventListener("input",()=>refreshHistory());
+        const darkToggle = document.getElementById("darkModeToggle"); darkToggle.addEventListener("click",()=>{ document.body.classList.toggle("dark"); });
+    }
+    function switchTab(tabId){
+        document.querySelectorAll(".tab-content").forEach(t=>t.classList.add("hidden"));
+        document.getElementById(`${tabId}Tab`).classList.remove("hidden");
+        document.querySelectorAll(".nav-item").forEach(n=>n.classList.remove("active"));
+        document.querySelector(`.nav-item[data-tab="${tabId}"]`).classList.add("active");
+        let title = tabId.charAt(0).toUpperCase()+tabId.slice(1);
+        document.getElementById("pageTitle").innerText = title;
+        if(tabId==="history") refreshHistory();
+        if(tabId==="dashboard") refreshDashboard();
+        if(tabId==="budgets") refreshBudgets();
+        if(tabId==="goals") refreshGoals();
+    }
+    showAuth();
+</script>
+</body>
+</html>
